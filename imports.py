@@ -26,7 +26,7 @@ from rich import print as richprint
 install()
 print( '\n\n' + '-' * 120 + '\n\n\n'   )
 main_ending_print_string = '\n\n' + '-' * 120 + '\n\n'
-mpl.rcParams['figure.figsize'] = (14, 8)
+mpl.rcParams['figure.figsize'] = (12, 7)
 mpl.rcParams['axes.grid'] = True
 mpl.rcParams['grid.alpha'] = 0.5
 mpl.rcParams['grid.linewidth'] = 1.0
