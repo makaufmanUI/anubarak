@@ -299,6 +299,9 @@ class Analysis:
                     net_increase_decrease_in_immediate_damage_taken: float,
                     time_spent_in_phase3_initial: float,    # NEW
                     time_spent_in_phase3_final: float,      # NEW
+                    decrease_in_burrower_lifetime: float,   # NEW
+                    total_ot_damage_saved_after_ls: float,  # NEW
+                    total_mt_damage_added_after_ls: float,  # NEW
                     ) -> None:
         self._dps_taken_ot = dps_taken_ot
         self._dps_taken_mt = dps_taken_mt
@@ -321,14 +324,56 @@ class Analysis:
         self._net_increase_decrease_in_passive_damage_taken = net_increase_decrease_in_passive_damage_taken
         self._net_increase_decrease_in_immediate_damage_taken = net_increase_decrease_in_immediate_damage_taken
 
-        self._time_spent_in_phase3_initial = time_spent_in_phase3_initial    # NEW
-        self._time_spent_in_phase3_final = time_spent_in_phase3_final        # NEW
+        self._time_spent_in_phase3_initial = time_spent_in_phase3_initial       # NEW
+        self._time_spent_in_phase3_final = time_spent_in_phase3_final           # NEW
+        self._decrease_in_burrower_lifetime = decrease_in_burrower_lifetime     # NEW
+        self._total_ot_damage_saved_after_ls = total_ot_damage_saved_after_ls   # NEW
+        self._total_mt_damage_added_after_ls = total_mt_damage_added_after_ls   # NEW
 
         self._dps_taken = _dps_taken(self._dps_taken_ot, self._dps_taken_mt, self._raid_dps_taken_ls, self._raid_dps_taken_pc)
         self._hps_taken = _hps_taken(self._anub_hps_taken_ls, self._raid_hps_taken_jol)
         self._dps_done = _dps_done(self._raid_dps_done, self._new_raid_dps, self._raid_dps_pct_change)
 
 
+    @property    # NEW
+    def total_damage_saved_ot_with_LS(self) -> float:
+        """
+        ---\n
+        The total damage saved on the (2) off tanks by redirecting damage from Anub'arak to Nerubian Burrowers.\n
+        Accounts for the extra damage incurred by Leeching Swarm, as opposed to `.total_damage_saved_ot`, which does not.\n
+        ---\n
+        """
+        return self._total_ot_damage_saved_after_ls
+    @total_damage_saved_ot_with_LS.setter
+    def total_damage_saved_ot_with_LS(self, value: float) -> None:
+        self._total_ot_damage_saved_after_ls = value
+
+    @property    # NEW
+    def total_damage_added_mt_with_LS(self) -> float:
+        """
+        ---\n
+        The total damage added to the main tank by redirecting damage from Anub'arak to Nerubian Burrowers.\n
+        Accounts for the extra damage incurred by Leeching Swarm, as opposed to `.total_damage_added_mt`, which does not.\n
+        ---\n
+        """
+        return self._total_mt_damage_added_after_ls
+    @total_damage_added_mt_with_LS.setter
+    def total_damage_added_mt_with_LS(self, value: float) -> None:
+        self._total_mt_damage_added_after_ls = value
+
+    @property    # NEW
+    def change_in_burrower_lifetime(self) -> float:
+        """
+        ---\n
+        The change in the amount of time Nerubian Burrowers are alive, caused by the change in damage done to them due to reallocation.\n
+        A positive value indicates an increase in the amount of time they are alive, and a negative value indicates a decrease in the amount of time they are alive.\n
+        ---\n
+        """
+        return -1 * self._decrease_in_burrower_lifetime
+    @change_in_burrower_lifetime.setter
+    def change_in_burrower_lifetime(self, value: float) -> None:
+        self._decrease_in_burrower_lifetime = -1 * value
+    
     @property    # NEW
     def time_spent_in_phase3_initial(self) -> float:
         """
@@ -587,6 +632,23 @@ class Analysis:
     @net_change_in_direct_damage_taken.setter
     def net_change_in_direct_damage_taken(self, value: float) -> None:
         self._net_increase_decrease_in_immediate_damage_taken = value
+
+    @property
+    def net_change_in_direct_damage_taken_with_LS_on_tanks(self) -> float:
+        """
+        ---\n
+        The net change in direct damage taken by the entire raid, after redirecting damage from Anub'arak to Nerubian Burrowers.\n
+        Accounts for the Leeching Swarm on both off tanks and the main tank, as those must be healed through.\n
+        ---\n
+        𝐷𝑢𝑒 𝑡𝑜   →   `𝑀𝑒𝑙𝑒𝑒 (1)`  /  `𝑀𝑒𝑙𝑒𝑒 (2)`  /  `𝐹𝑟𝑒𝑒𝑧𝑖𝑛𝑔 𝑆𝑙𝑎𝑠ℎ (2)`  /  `𝑃𝑒𝑛𝑒𝑡𝑟𝑎𝑡𝑖𝑛𝑔 𝐶𝑜𝑙𝑑 (2)`  /  `𝐿𝑒𝑒𝑐ℎ𝑖𝑛𝑔 𝑆𝑤𝑎𝑟𝑚 (2)`
+        𝐹𝑟𝑜𝑚     →   `𝑁𝑒𝑟𝑢𝑏𝑖𝑎𝑛 𝐵𝑢𝑟𝑟𝑜𝑤𝑒𝑟 (1)`  /  `𝐴𝑛𝑢𝑏'𝑎𝑟𝑎𝑘 (2)`\n
+        𝑇𝑎𝑟𝑔𝑒𝑡   →   `𝑃𝑙𝑎𝑦𝑒𝑟𝑠`\n
+        ---\n
+        """
+        return self.total_damage_added_mt_with_LS + self.total_damage_added_raid_PC - self.total_damage_saved_ot_with_LS
+    # @net_change_in_direct_damage_taken_with_LS_on_tanks.setter
+    # def net_change_in_direct_damage_taken_with_LS_on_tanks(self, value: float) -> None:
+    #     self._net_increase_decrease_in_immediate_damage_taken = value
     
 
     def summarize(self) -> None:
@@ -608,24 +670,33 @@ class Analysis:
         print("                                     ----------------------------------------------")
         rprints(37, f"Burrower DPS Added: [white].......[/white] {self.burrower_dps_added:,.1f} dps")
         rprints(37, f"Anub'arak DPS Lost: [white].......[/white] {self.anubarak_dps_lost:,.1f} dps\n")
+        if self.change_in_burrower_lifetime < 0:
+            rprints(37, f"Δ in Burrower Lifetime: [white]...[/white] {self.change_in_burrower_lifetime:,.4f} sec\n")
+        else: rprints(37, f"Δ in Burrower Lifetime: [white]...[/white] {self.change_in_burrower_lifetime:,.5f} sec\n")
         rprints(37, f"New Raid DPS (Anub): [white]......[/white] {self.dps_done.raid2:,.0f} dps")
         rprints(37, f"Raid DPS (% change): [white]......[/white] {self.dps_done.raid_pct_change:,.4f} pct\n")
+        rprints(37, f"Time in Phase3 (orig.): [white]...[/white] {self.time_spent_in_phase3_initial:,.3f} sec")
+        rprints(37, f"Time in Phase3 (final): [white]...[/white] {self.time_spent_in_phase3_final:,.3f} sec\n")
         rprints(37, f"Time Added to Phase3: [white].....[/white] {self.time_added_to_phase3:,.5f} sec")
         rprints(37, f"Time Added (% change): [white]....[/white] {self.time_added_to_phase3_pct_change:,.5f} pct")
         print("                                     ----------------------------------------------\n\n\n\n")
 
         richprint("                                          [magenta]OVERALL EFFECT ON DAMAGE SAVED/ADDED[/magenta]  ")
         print("                                   ---------------------------------------------------")
-        rprints(35, f"Total OT Damage Saved: [white].......[/white] {self.total_damage_saved_ot:,.2f} dps\n")
-        rprints(35, f"Total MT Damage Added: [white].......[/white] {self.total_damage_added_mt:,.2f} dps")
-        rprints(35, f"Total PC Damage Added: [white].......[/white] {self.total_damage_added_raid_PC:,.2f} dps\n")
-        rprints(35, f"Net LS Damage Added: [white].........[/white] {self.net_damage_added_raid_LS:,.1f} dps")
-        rprints(35, f"Gross LS Damage Added: [white].......[/white] {self.total_damage_added_raid_LS:,.1f} dps")
+        rprints(35, f"Total OT Damage Saved: [white].......[/white] {self.total_damage_saved_ot:,.2f} dmg")
+        if self.total_damage_saved_ot_with_LS < 0:
+            rprints(35, f"OT Damage Saved (w/LS): [white]......[/white]{self.total_damage_saved_ot_with_LS:,.1f} dmg\n")
+        else: rprints(35, f"OT Damage Saved (w/LS): [white]......[/white] {self.total_damage_saved_ot_with_LS:,.1f} dmg\n")
+        rprints(35, f"Total MT Damage Added: [white].......[/white] {self.total_damage_added_mt:,.2f} dmg")
+        rprints(35, f"MT Damage Added (w/LS): [white]......[/white] {self.total_damage_added_mt_with_LS:,.1f} dmg")
+        rprints(35, f"Total PC Damage Added: [white].......[/white] {self.total_damage_added_raid_PC:,.2f} dmg\n")
+        rprints(35, f"Net LS Damage Added: [white].........[/white] {self.net_damage_added_raid_LS:,.1f} dmg")
+        rprints(35, f"Gross LS Damage Added: [white].......[/white] {self.total_damage_added_raid_LS:,.1f} dmg")
         print("                                   ---------------------------------------------------\n\n\n\n")
 
         rprint(f"Net Increase/Decrease In Passive Damage [bold]Taken[/bold] (LS damage gained - JoL damage saved): [white]........[/white] {'[bold red]+ [/bold red]' if self.net_change_in_passive_damage_taken >= 0 else '[bold green]- [/bold green]'}{self.net_change_in_passive_damage_taken:,.2f} damage")
         rprint(f"Net Increase/Decrease In Immediate Damage [bold]Taken[/bold] (MT & PC damage gained - OT damage saved): [white]..[/white] {'[bold red]+  [/bold red]' if self.net_change_in_direct_damage_taken >= 0 else '[bold green]-  [/bold green]'}{self.net_change_in_direct_damage_taken:,.2f} damage\n")
-
+        rprint(f"Net Increase/Decrease In Immediate Damage [bold]Taken[/bold] (MT w/LS & PC damage gained - OT damage saved w/LS): [white]...[/white] {'[bold red]+  [/bold red]' if self.net_change_in_direct_damage_taken_with_LS_on_tanks >= 0 else '[bold green]-  [/bold green]'}{self.net_change_in_direct_damage_taken_with_LS_on_tanks:,.2f} damage\n")
 
 
 
@@ -649,9 +720,9 @@ def analyze(REPORT_CODE: str, ANUBARAK_DPS_LOST: float, BURROWER_DPS_ADDED: floa
     p3_start_time_seconds = leeching_swarm_healing_done.series[0].timestamps_adjusted[[i for i in range(len(leeching_swarm_healing_done.series[0].values)) if leeching_swarm_healing_done.series[0].values[i] > 0][0]] / 1000
     p3_start_timestamp = leeching_swarm_healing_done.series[0].timestamps[[i for i in range(len(leeching_swarm_healing_done.series[0].values)) if leeching_swarm_healing_done.series[0].values[i] > 0][0]]
     p3_end_time_seconds = leeching_swarm_healing_done.series[0].timestamps_adjusted[-1] / 1000
-    # p3_end_timestamp = leeching_swarm_healing_done.series[0].timestamps[-1]
+    p3_end_timestamp = leeching_swarm_healing_done.series[0].timestamps[-1]
     
-    p3_duration_seconds = p3_end_time_seconds - p3_start_time_seconds
+    p3_duration_seconds = p3_end_time_seconds - p3_start_time_seconds - 2
 
     burrower_melee_damage_taken = get_damage_taken_data(REPORT_CODE, anubarak_kill, enemy=anubarak_kill.get_enemy_by_name("Nerubian Burrower"), ability=1, start_time=int(p3_start_timestamp))
     burrower_melee_damage_taken_series = []
@@ -670,6 +741,16 @@ def analyze(REPORT_CODE: str, ANUBARAK_DPS_LOST: float, BURROWER_DPS_ADDED: floa
     total_leeching_swarm_hps = sum([s.total for s in leeching_swarm_healing_done_series]) / p3_duration_seconds
 
     DPS_taken_LS = total_leeching_swarm_dps
+
+    leeching_swarm_damage_taken_series_totals = [s.total for s in leeching_swarm_damage_taken_series]
+    leeching_swarm_damage_taken_top_3 = sorted(leeching_swarm_damage_taken_series_totals, reverse=True)[:3]     # top 3 damage taken totals (the three tanks)
+    mean_leeching_swarm_damage_taken_by_tanks = np.mean(leeching_swarm_damage_taken_top_3)
+    mean_leeching_swarm_dps_taken_by_tanks = mean_leeching_swarm_damage_taken_by_tanks / p3_duration_seconds    # used in finding extra LS damage taken by tanks due to longer p3 duration
+
+
+    DPS_taken_OT_LS = 2 * mean_leeching_swarm_dps_taken_by_tanks    # Current average DPS taken by off tanks from Leeching Swarm (must be healed)
+    DPS_taken_MT_LS = mean_leeching_swarm_dps_taken_by_tanks        # Current average DPS taken by main tank from Leeching Swarm (must be healed)
+
 
     raid_damage_done_to_boss = get_damage_done_data(REPORT_CODE, anubarak_kill, start_time=int(p3_start_timestamp), enemy=anubarak_kill.get_enemy_by_name("Anub'arak"))
     raid_damage_done_to_boss_series = raid_damage_done_to_boss.series[:-1]
@@ -712,17 +793,31 @@ def analyze(REPORT_CODE: str, ANUBARAK_DPS_LOST: float, BURROWER_DPS_ADDED: floa
 
     T_P3 = -8_157_825 / (total_leeching_swarm_hps - raid_damage_done_to_boss_dps)
     T_P3_2 = -8_157_825 / (total_leeching_swarm_hps - (raid_damage_done_to_boss_dps-ANUBARAK_DPS_LOST))
-    DELTA_T_P3 = T_P3_2 - T_P3
+    # DELTA_T_P3 = T_P3_2 - T_P3
+    DELTA_T_P3 = T_P3_2 - ((T_P3 + p3_duration_seconds)/2)
 
-    DAMAGE_SAVED_OT = DPS_taken_OT * (  DELTA_T_P3  +  30*( 1 - (97000/(97000+BURROWER_DPS_ADDED)) )  )
+    decrease_in_burrower_lifetime = 30 * ( 1 - (97000/(97000+BURROWER_DPS_ADDED)) )     # in seconds -- if negative, burrower lifetime is increased
+    burrower_lifetime_ratio = (30 - decrease_in_burrower_lifetime) / 30     # ratio of new burrower lifetime to old burrower lifetime -- if less than 1, burrower lifetime has decreased
+    DPS_SAVED_OT = DPS_taken_OT * (1 - burrower_lifetime_ratio)     # becomes negative when the burrower lifetime ratio becomes greater than 1
+
+    # DAMAGE_SAVED_OT = DPS_taken_OT * (  DELTA_T_P3  +  30*( 1 - (97000/(97000+BURROWER_DPS_ADDED)) )  )
+    DAMAGE_SAVED_OT = DPS_SAVED_OT * T_P3_2                 # This is a favorable assumption - assumes more damage is saved than is actually likely saved
+    DAMAGE_GAINED_OT = DPS_taken_OT_LS * DELTA_T_P3         # DPS taken by OTs from Leeching Swarm - should be accounted for in DAMAGE_SAVED_OT
     DAMAGE_GAINED_MT = DPS_taken_MT * DELTA_T_P3
+    DAMAGE_GAINED_MT_LS = DPS_taken_MT_LS * DELTA_T_P3      # DPS taken by MT from Leeching Swarm - should be accounted for in DAMAGE_GAINED_MT
     DAMAGE_GAINED_PC = DPS_taken_PC * DELTA_T_P3
     DAMAGE_GAINED_LS = DPS_taken_LS * DELTA_T_P3
     NET_DAMAGE_GAINED_LS = DAMAGE_GAINED_LS - (HPS_taken_JoL * DELTA_T_P3)
     TOTAL_IMMEDIATE_DAMAGE_GAINED = DAMAGE_GAINED_MT + DAMAGE_GAINED_PC - DAMAGE_SAVED_OT
     TOTAL_LS_DAMAGE_NOT_HEALED = NET_DAMAGE_GAINED_LS
 
-        
+
+    DAMAGE_SAVED_OT_WITH_LS = DAMAGE_SAVED_OT - DAMAGE_GAINED_OT
+    DAMAGE_GAINED_MT_WITH_LS = DAMAGE_GAINED_MT + DAMAGE_GAINED_MT_LS
+    # print(f"DAMAGE_SAVED_OT_WITH_LS: {DAMAGE_SAVED_OT_WITH_LS}")
+    # print(f"DAMAGE_GAINED_MT_WITH_LS: {DAMAGE_GAINED_MT_WITH_LS}")
+
+    
     if print_report:
         rprint(f"P3 Start: [white].....[/white] {p3_start_time_seconds:.2f} seconds  ({p3_start_timestamp:.0f})")
         rprint(f"P3 End: [white].......[/white] {p3_end_time_seconds:.2f} seconds  ({p3_end_timestamp:.0f})")
@@ -810,5 +905,8 @@ def analyze(REPORT_CODE: str, ANUBARAK_DPS_LOST: float, BURROWER_DPS_ADDED: floa
         TOTAL_IMMEDIATE_DAMAGE_GAINED,
         T_P3,                                # NEW
         T_P3 + DELTA_T_P3,                   # NEW
+        decrease_in_burrower_lifetime,       # NEW
+        DAMAGE_SAVED_OT_WITH_LS,             # NEW
+        DAMAGE_GAINED_MT_WITH_LS,            # NEW
     )
     
