@@ -793,8 +793,8 @@ def analyze(REPORT_CODE: str, ANUBARAK_DPS_LOST: float, BURROWER_DPS_ADDED: floa
 
     T_P3 = -8_157_825 / (total_leeching_swarm_hps - raid_damage_done_to_boss_dps)
     T_P3_2 = -8_157_825 / (total_leeching_swarm_hps - (raid_damage_done_to_boss_dps-ANUBARAK_DPS_LOST))
-    # DELTA_T_P3 = T_P3_2 - T_P3
-    DELTA_T_P3 = T_P3_2 - ((T_P3 + p3_duration_seconds)/2)
+    DELTA_T_P3 = T_P3_2 - T_P3
+    # DELTA_T_P3 = T_P3_2 - ((T_P3 + p3_duration_seconds)/2)
 
     decrease_in_burrower_lifetime = 30 * ( 1 - (97000/(97000+BURROWER_DPS_ADDED)) )     # in seconds -- if negative, burrower lifetime is increased
     burrower_lifetime_ratio = (30 - decrease_in_burrower_lifetime) / 30     # ratio of new burrower lifetime to old burrower lifetime -- if less than 1, burrower lifetime has decreased
